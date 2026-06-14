@@ -4,7 +4,7 @@ from app.config import settings
 client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 SYSTEM_PROMPT = """You are ERRORFIX AI, a world-class IT diagnostic expert.
-Respond ONLY with a single valid JSON object. No text before or after. No markdown. No comments inside JSON.
+Respond ONLY with a single valid JSON object. No text before or after. No markdown. No comments inside JSON. No control characters.
 Schema:
 {
   "code": "string or null",
@@ -21,21 +21,19 @@ Schema:
   "prevention": "string"
 }"""
 
-def extract_json(text: str) -> dict:
+def clean_json(text: str) -> dict:
     text = text.strip()
-    # Retirer les blocs markdown
     text = re.sub(r'```json\s*', '', text)
     text = re.sub(r'```\s*', '', text)
     text = text.strip()
-    # Trouver le premier { et le dernier }
     start = text.find('{')
     end = text.rfind('}')
     if start == -1 or end == -1:
-        raise ValueError("Aucun JSON trouve dans la reponse")
-    json_str = text[start:end+1]
-    # Supprimer les commentaires JSON (// ...)
-    json_str = re.sub(r'//[^\n]*', '', json_str)
-    return json.loads(json_str)
+        raise ValueError("No JSON found")
+    text = text[start:end+1]
+    text = re.sub(r'//[^\n]*', '', text)
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    return json.loads(text)
 
 async def analyze_text(text: str, lang: str = "fr", mode: str = "beginner") -> dict:
     prompt = f"Respond in language: {lang}\nMode: {mode}\nAnalyze this error:\n{text}"
@@ -45,7 +43,7 @@ async def analyze_text(text: str, lang: str = "fr", mode: str = "beginner") -> d
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}]
     )
-    return extract_json(message.content[0].text)
+    return clean_json(message.content[0].text)
 
 async def analyze_image_text(ocr_text: str, lang: str = "fr") -> dict:
     prompt = f"Respond in language: {lang}\nText extracted from screenshot:\n{ocr_text}"
