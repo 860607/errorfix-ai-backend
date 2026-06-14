@@ -1,0 +1,16 @@
+﻿fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+anthropic
+pytesseract
+Pillow
+opencv-python-headless
+python-multipart
+aiofiles
+redis
+python-dotenv
+pydantic-settings
